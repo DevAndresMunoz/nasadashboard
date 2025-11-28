@@ -10,22 +10,18 @@ let store = Map({
     error: null
 });
 
-// Add markup to the page
 const root = document.getElementById('root');
 
-// Pure function to update store
 const updateStore = (newState) => {
     store = store.merge(newState);
     render(root, store);
 };
 
-// Pure function to render
 const render = (root, state) => {
     root.innerHTML = App(state);
     attachEventListeners();
 };
 
-// Higher-order function that creates event handlers
 const createRoverClickHandler = (roverName) => (event) => {
     event.preventDefault();
     updateStore(Map({ 
@@ -35,7 +31,6 @@ const createRoverClickHandler = (roverName) => (event) => {
     getRoverImages(roverName);
 };
 
-// Attach event listeners after render
 const attachEventListeners = () => {
     const tabs = document.querySelectorAll('.rover-tab');
     tabs.forEach(tab => {

@@ -12,7 +12,6 @@ app.use(bodyParser.json());
 
 app.use('/', express.static(path.join(__dirname, '../public')));
 
-// NASA Image and Video Library API base URL
 const NASA_IMAGE_API = 'https://images-api.nasa.gov';
 
 // Pure function to create search URL
@@ -48,7 +47,7 @@ app.get('/rover/:name/images', async (req, res) => {
     }
 });
 
-// Get asset details (high-res images)
+// Get asset details
 app.get('/asset/:nasa_id', async (req, res) => {
     try {
         const nasaId = req.params.nasa_id;
