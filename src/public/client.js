@@ -3,7 +3,7 @@ const { Map, List } = Immutable;
 // Initial state using Immutable.js
 let store = Map({
     user: Map({ name: "Explorer" }),
-    rovers: List(['Curiosity', 'Opportunity', 'Spirit']),
+    rovers: List(['Curiosity', 'Opportunity', 'Spirit', 'Perseverance']),
     selectedRover: 'Curiosity',
     roverData: Map(),
     loading: false,
@@ -32,7 +32,7 @@ const createRoverClickHandler = (roverName) => (event) => {
         selectedRover: roverName, 
         loading: true 
     }));
-    getRoverData(roverName);
+    getRoverImages(roverName);
 };
 
 // Attach event listeners after render
@@ -62,7 +62,8 @@ const App = (state) => {
 const Header = () => {
     return `
         <header>
-            <h1>🚀 Mars Rover Dashboard</h1>
+            <h1>Mars Rover Dashboard</h1>
+            <p>Explore images from NASA's Mars Rovers</p>
         </header>
     `;
 };
@@ -71,7 +72,7 @@ const Header = () => {
 const Footer = () => {
     return `
         <footer>
-            <p>Data provided by NASA's Mars Rover API | Built with Functional Programming</p>
+            <p>Data provided by NASA's Image and Video Library | Built with Functional Programming</p>
         </footer>
     `;
 };
@@ -102,7 +103,7 @@ const RoverContent = (state) => {
     const roverData = state.getIn(['roverData', selectedRover]);
     
     if (loading && !roverData) {
-        return `<div class="loading">Loading ${selectedRover} data...</div>`;
+        return `<div class="loading">Loading ${selectedRover} images...</div>`;
     }
     
     if (error) {
@@ -110,12 +111,12 @@ const RoverContent = (state) => {
     }
     
     if (!roverData) {
-        return `<div class="loading">Select a rover to view data</div>`;
+        return `<div class="loading">Select a rover to view images</div>`;
     }
     
     return `
-        ${RoverInfo(roverData)}
-        ${ImageGallery(roverData)}
+        ${RoverInfo(selectedRover, roverData)}
+        ${ImageGallery(selectedRover, roverData)}
     `;
 };
 
@@ -130,66 +131,107 @@ const formatDate = (dateString) => {
     });
 };
 
+// Pure function to get rover information
+const getRoverInfo = (roverName) => {
+    const roverInfo = {
+        'Curiosity': {
+            launch: '2011-11-26',
+            landing: '2012-08-06',
+            status: 'Active',
+            description: 'Part of NASA\'s Mars Science Laboratory mission, Curiosity is the largest and most capable rover ever sent to Mars.'
+        },
+        'Opportunity': {
+            launch: '2003-07-07',
+            landing: '2004-01-25',
+            status: 'Complete',
+            description: 'Opportunity operated for almost 15 years, far exceeding its planned 90-day mission.'
+        },
+        'Spirit': {
+            launch: '2003-06-10',
+            landing: '2004-01-04',
+            status: 'Complete',
+            description: 'Spirit operated for over six years, discovering evidence that Mars was once much wetter than it is today.'
+        },
+        'Perseverance': {
+            launch: '2020-07-30',
+            landing: '2021-02-18',
+            status: 'Active',
+            description: 'The newest Mars rover, seeking signs of ancient life and collecting samples for future return to Earth.'
+        }
+    };
+    
+    return roverInfo[roverName] || {};
+};
+
 // Rover information component
-const RoverInfo = (roverData) => {
-    const manifest = roverData.photo_manifest;
+const RoverInfo = (roverName, roverData) => {
+    const info = getRoverInfo(roverName);
+    const totalImages = roverData.collection?.metadata?.total_hits || 0;
     
     return `
         <div class="rover-info">
-            <h2>${manifest.name} Rover</h2>
+            <h2>${roverName} Rover</h2>
+            <p class="rover-description">${info.description}</p>
             <div class="info-grid">
                 <div class="info-item">
                     <span class="info-label">Status:</span>
-                    <span>${manifest.status}</span>
+                    <span>${info.status}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Launch Date:</span>
-                    <span>${formatDate(manifest.launch_date)}</span>
+                    <span>${formatDate(info.launch)}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Landing Date:</span>
-                    <span>${formatDate(manifest.landing_date)}</span>
+                    <span>${formatDate(info.landing)}</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Total Photos:</span>
-                    <span>${manifest.total_photos.toLocaleString()}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Max Sol:</span>
-                    <span>${manifest.max_sol}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Max Date:</span>
-                    <span>${formatDate(manifest.max_date)}</span>
+                    <span class="info-label">Images Found:</span>
+                    <span>${totalImages.toLocaleString()}</span>
                 </div>
             </div>
         </div>
     `;
 };
 
+// Pure function to extract image URL from links array
+const getImageUrl = (links) => {
+    if (!links || links.length === 0) return '';
+    const imageLink = links.find(link => link.render === 'image');
+    return imageLink ? imageLink.href : '';
+};
+
 // Image gallery component using map
-const ImageGallery = (roverData) => {
-    const photos = roverData.latest_photos || [];
+const ImageGallery = (roverName, roverData) => {
+    const items = roverData.collection?.items || [];
     
-    if (photos.length === 0) {
-        return `<div class="loading">No recent photos available</div>`;
+    if (items.length === 0) {
+        return `<div class="loading">No images found for ${roverName}</div>`;
     }
     
-    // Use map to transform photo data into HTML
-    const photoItems = photos.slice(0, 12).map(photo => `
-        <div class="gallery-item">
-            <img src="${photo.img_src}" alt="Mars photo by ${photo.rover.name}" loading="lazy">
-            <div class="image-info">
-                <p><strong>Camera:</strong> ${photo.camera.full_name}</p>
-                <p><strong>Date:</strong> ${formatDate(photo.earth_date)}</p>
-                <p><strong>Sol:</strong> ${photo.sol}</p>
+    // Use map to transform image data into HTML (limiting to 24 images)
+    const photoItems = items.slice(0, 24).map(item => {
+        const data = item.data[0];
+        const imageUrl = getImageUrl(item.links);
+        const title = data.title || 'Untitled';
+        const description = data.description || 'No description available';
+        const dateCreated = formatDate(data.date_created);
+        
+        return `
+            <div class="gallery-item">
+                <img src="${imageUrl}" alt="${title}" loading="lazy" onerror="this.src='https://via.placeholder.com/400x300?text=Image+Not+Available'">
+                <div class="image-info">
+                    <p class="image-title"><strong>${title}</strong></p>
+                    <p class="image-description">${description.substring(0, 150)}${description.length > 150 ? '...' : ''}</p>
+                    <p><strong>Date:</strong> ${dateCreated}</p>
+                </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
     
     return `
         <div class="image-gallery">
-            <h3>Latest Photos from ${roverData.photo_manifest.name}</h3>
+            <h3>Images from ${roverName}</h3>
             <div class="gallery-grid">
                 ${photoItems}
             </div>
@@ -200,46 +242,35 @@ const ImageGallery = (roverData) => {
 // ------------------------------------------------------  API CALLS
 
 // Pure function to construct API URL
-const createRoverManifestUrl = (roverName) => {
-    return `/rover/${roverName.toLowerCase()}/manifest`;
+const createRoverImagesUrl = (roverName) => {
+    return `/rover/${roverName.toLowerCase()}/images`;
 };
 
-// Pure function to construct photos URL
-const createRoverPhotosUrl = (roverName) => {
-    return `/rover/${roverName.toLowerCase()}/latest-photos`;
-};
-
-// Fetch rover data
-const getRoverData = async (roverName) => {
+// Fetch rover images
+const getRoverImages = async (roverName) => {
     try {
-        // Fetch both manifest and latest photos
-        const [manifestResponse, photosResponse] = await Promise.all([
-            fetch(createRoverManifestUrl(roverName)),
-            fetch(createRoverPhotosUrl(roverName))
-        ]);
+        const url = createRoverImagesUrl(roverName);
+        const response = await fetch(url);
         
-        const manifestData = await manifestResponse.json();
-        const photosData = await photosResponse.json();
+        if (!response.ok) {
+            throw new Error(`Failed to fetch images: ${response.status}`);
+        }
         
-        // Combine the data
-        const combinedData = {
-            photo_manifest: manifestData.photo_manifest,
-            latest_photos: photosData.latest_photos
-        };
+        const data = await response.json();
         
         // Update store with new rover data
         const currentRoverData = store.get('roverData');
         updateStore(Map({
-            roverData: currentRoverData.set(roverName, combinedData),
+            roverData: currentRoverData.set(roverName, data),
             loading: false,
             error: null
         }));
         
     } catch (err) {
-        console.error('Error fetching rover data:', err);
+        console.error('Error fetching rover images:', err);
         updateStore(Map({ 
             loading: false, 
-            error: 'Failed to load rover data. Please try again.' 
+            error: 'Failed to load rover images. Please try again.' 
         }));
     }
 };
@@ -249,5 +280,5 @@ window.addEventListener('load', () => {
     render(root, store);
     const initialRover = store.get('selectedRover');
     updateStore(Map({ loading: true }));
-    getRoverData(initialRover);
+    getRoverImages(initialRover);
 });
